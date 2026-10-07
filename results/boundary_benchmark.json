@@ -1,0 +1,11 @@
+{
+  "backend": "cpp",
+  "n_events": 300000,
+  "n_trades": 39597,
+  "batched_seconds": 0.03321935100029805,
+  "per_event_seconds": 0.35325107900007424,
+  "batched_events_per_sec": 9030880.825977255,
+  "per_event_events_per_sec": 849254.3061699662,
+  "speedup": 10.63389465365849,
+  "boundary_ns_per_event": 1066.7724266659206
+}

@@ -1,0 +1,37 @@
+== Hardware / toolchain ==
+CPU      : AMD Ryzen 9 5900HS with Radeon Graphics (8 cores / 16 threads)
+OS       : Windows 11 Home 10.0.26200
+Compiler : gcc.exe (MinGW-W64 x86_64-ucrt-posix-seh, built by Brecht Sanders, r1) 16.2.0
+Measured : 2026-09-19T21:03Z, ./build/latency_profile.exe 1500000 --prefault
+
+CAVEAT -- clock resolution on this machine: this binary times every single
+operation with std::chrono::steady_clock, which on Windows maps to
+QueryPerformanceCounter. On this machine QPC's frequency is 10,000,000 Hz,
+i.e. its own tick is 100 ns -- coarser than the ~1-2 ns operations being
+timed. That is why clock overhead reads 100.0 ns (vs 20.0 ns on the Linux
+box the original numbers came from) and why p50/p90 below are quantized to
+multiples of 100 ns, including literal 0.0 ns entries -- those are "faster
+than one clock tick", not "zero cost". Treat p50/p90 here as lower-resolution
+than the ones previously measured on Linux; the tail (p99.9, max) and the
+overall shape are still meaningful since they're multiple clock ticks wide.
+==========================
+
+Latency profile  (all figures in NANOSECONDS, clock overhead removed)
+samples per op : 1500000
+clock overhead : 100.0 ns median (subtracted from every sample)
+pre-faulted    : YES (pages touched up front)
+
+  operation                      n       p50       p90       p99     p99.9         max       mean
+  ------------------------------------------------------------------------------------------------
+  add_limit (passive)      1500000       0.0     100.0     200.0     600.0    112700.0       70.6
+  cancel                   1500000       0.0       0.0     200.0     900.0    535800.0       15.8
+  market order (1 fill)    1500000     100.0     100.0     400.0    4500.0  24029500.0      122.6
+  microprice read          1500000       0.0       0.0       0.0     100.0     65400.0        0.0
+  MIXED FLOW (any event)   1500000     100.0     600.0    1200.0    3600.0    206300.0      258.4
+
+  mixed-flow run produced 203651 trades on 13571955 shares
+
+Note: p99.9 close to p50 means no hidden allocation or rehashing
+      in the hot path -- which is the whole point of the pool
+      allocator and the pre-reserved hash map.
+

@@ -1,0 +1,4 @@
+numpy>=1.24
+matplotlib>=3.6
+# C++ module needs CMake >= 3.16 and a C++17 compiler;
+# pybind11 and google/benchmark are fetched automatically by CMake.

@@ -1,0 +1,114 @@
+
+================================================================================================
+  A.  ABLATIONS -- remove one ingredient at a time
+================================================================================================
+
+  Predictions to make BEFORE looking at the numbers:
+    * no skew        -> inventory stdev explodes, drawdown grows, Sharpe falls
+    * no informed flow -> adverse selection ~ 0, PnL looks unrealistically good
+    * no rebate      -> PnL falls by roughly $0.002 x shares traded
+    * wide spread    -> fewer fills, more edge each, less adverse selection
+
+configuration                              PnL $   Sharpe  maxDD $   fills partic%  cap c/sh advsel c/sh  inv sd
+------------------------------------------------------------------------------------------------
+baseline                                   1,670    1,858       19   7,250     9.2      1.38       -1.00      51
+no inventory skew (skew=0)                 2,092    1,015       34   6,655     8.7      1.47       -0.92     315
+no informed flow (kappa=0)                   308      230       98   5,363     6.6      1.33       -1.19      46
+no jumps                                   1,716    1,907       17   7,535     9.2      1.41       -1.06      52
+no maker rebate                            1,068    1,221       22   7,250     9.2      1.38       -1.00      51
+wide quotes (half spread = 3 ticks)        2,980    2,493        9   3,388     4.2      3.22       -1.27      73
+mid anchor instead of microprice           1,977    2,575        7   7,234     9.1      1.40       -0.93      51
+slow requoting (500 ms)                    1,425    2,577        6   3,030     3.6      1.83       -0.78      52
+
+================================================================================================
+  B.  PARAMETER SWEEP -- half-spread x skew
+================================================================================================
+
+  PnL ($) / inventory stdev (shares), rows = half-spread ticks, cols = skew ticks
+
+            skew=0.0         skew=0.3         skew=0.6         skew=1.2         
+  hs=0.5     1,515/107         1,085/60          1,016/53            624/48        
+  hs=1.0     1,855/126         2,076/63          1,670/51          1,309/47        
+  hs=2.0     2,459/166         2,776/83          2,702/63          2,371/45        
+  hs=3.0     2,759/167         2,897/101         2,980/73          2,891/51        
+
+================================================================================================
+  C.  CROSS-RUN SHARPE -- the statistically defensible one
+================================================================================================
+
+  Each of the 10 runs uses a different random seed, so they are
+  INDEPENDENT observations of the same strategy in the same market model.
+  Treating one run as one "block" of trading time:
+
+      Sharpe = mean(block PnL) / stdev(block PnL) * sqrt(blocks per year)
+
+  This is honest in a way the intraday-scaled Sharpe is not, because it makes
+  no i.i.d. assumption about second-to-second PnL -- it only assumes the runs
+  are independent, which they are by construction.
+
+    run  1  seed=100  PnL $    1,762  maxDD $     13  fills  7,330  finalInv     41
+    run  2  seed=101  PnL $    1,708  maxDD $     14  fills  7,205  finalInv      5
+    run  3  seed=102  PnL $    1,687  maxDD $     33  fills  7,295  finalInv     41
+    run  4  seed=103  PnL $    1,815  maxDD $     12  fills  7,177  finalInv     45
+    run  5  seed=104  PnL $    1,673  maxDD $     31  fills  7,412  finalInv      3
+    run  6  seed=105  PnL $    1,700  maxDD $     32  fills  7,462  finalInv     30
+    run  7  seed=106  PnL $    1,707  maxDD $     17  fills  7,148  finalInv    -59
+    run  8  seed=107  PnL $    1,690  maxDD $     15  fills  7,559  finalInv     -3
+    run  9  seed=108  PnL $    1,872  maxDD $     11  fills  7,349  finalInv     65
+    run 10  seed=109  PnL $    1,731  maxDD $     13  fills  7,237  finalInv    -51
+
+    block length                15.4 minutes of market time
+    mean PnL per block    $    1,734
+    stdev PnL per block   $       64
+    worst block           $    1,673
+    best block            $    1,872
+    loss-making blocks             0 / 10
+    ----------------------------------------------------------------
+    CROSS-RUN SHARPE (annualised)      2,165.3
+    ----------------------------------------------------------------
+  Still high, because the model has no regime changes and no competitor who
+  undercuts our quote. State that limitation out loud; it is a strength to
+  know where your own number comes from.
+
+================================================================================================
+  D.  STRATEGY COMPARISON
+================================================================================================
+configuration                              PnL $   Sharpe  maxDD $   fills partic%  cap c/sh advsel c/sh  inv sd
+------------------------------------------------------------------------------------------------
+fixed skew (practical)                     1,670    1,858       19   7,250     9.2      1.38       -1.00      51
+Avellaneda-Stoikov gamma=0.02              1,893    2,001       14   7,478     9.7      1.39       -0.98      68
+Avellaneda-Stoikov gamma=0.06              1,895    2,104       15   6,790     8.9      1.54       -1.09      56
+Avellaneda-Stoikov gamma=0.20              1,789    1,622        8   4,961     6.4      2.07       -1.40      39
+no skew at all                             2,092    1,015       34   6,655     8.7      1.47       -0.92     315
+
+  charts -> results/strategy_comparison.png, results/ablations.png
+
+================================================================================================
+  E.  VOLATILITY SIGNATURE PLOT -- why you must not sample too fast
+================================================================================================
+
+  Estimate the volatility of the mid price at a range of sampling intervals.
+  The observed mid is the efficient price PLUS microstructure noise (bid-ask
+  bounce, one order flipping the touch). That noise does not grow with time,
+  but squared returns get divided by a smaller dt as you sample faster, so the
+  estimate diverges. Sample slowly enough and it converges on the truth.
+
+  This is not academic: feeding the noisy estimate into Avellaneda-Stoikov made
+  it quote 50 ticks wide and stop market making entirely.
+
+      interval (s)   estimated vol    x true
+              0.05           5.668       9.4
+               0.1           4.754       7.9
+              0.25           3.422       5.7
+               0.5           2.550       4.3
+                 1           1.867       3.1
+                 2           1.436       2.4
+                 5           1.105       1.8
+                10           0.887       1.5
+                30           0.749       1.2
+                60           0.540       0.9
+
+    true fair-value volatility = 0.60 ticks/sqrt(s)
+    chart -> results/volatility_signature.png
+  data   -> results/experiments.json
+

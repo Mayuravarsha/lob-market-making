@@ -1,0 +1,32 @@
+== Hardware / toolchain ==
+CPU      : AMD Ryzen 9 5900HS with Radeon Graphics (8 cores / 16 threads, 3294 MHz reported)
+OS       : Windows 11 Home 10.0.26200
+Compiler : gcc.exe (MinGW-W64 x86_64-ucrt-posix-seh, built by Brecht Sanders, r1) 16.2.0
+CMake    : 4.4.3, generator Ninja 1.13.2
+Build    : -DCMAKE_BUILD_TYPE=Release (portable toolchain, no admin rights)
+Note     : previous numbers below this header's predecessor were measured on a 2 vCPU / 2.8 GHz
+           cloud VM with a different compiler -- do not compare across the two directly, this is
+           a different machine, different core count, and a different compiler.
+==========================
+
+2026-09-19T17:03:32-04:00
+Running .\build\bench_order_book.exe
+Run on (16 X 3294 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x8)
+  L1 Instruction 32 KiB (x8)
+  L2 Unified 512 KiB (x8)
+  L3 Unified 16384 KiB (x1)
+--------------------------------------------------------------------------------------
+Benchmark                            Time             CPU   Iterations UserCounters...
+--------------------------------------------------------------------------------------
+BM_AddLimit_Passive/1000           104 ns          103 ns      6400000 book_orders=202k items_per_second=9.75238M/s
+BM_AddLimit_Passive/50000          100 ns         98.4 ns      7466667 book_orders=166.667k items_per_second=10.1674M/s
+BM_Cancel                         77.2 ns         80.2 ns      8960000 cancels_that_hit=8.96M items_per_second=12.4661M/s
+BM_Modify_ShrinkInPlace           16.5 ns         16.4 ns     44800000 items_per_second=61.0043M/s
+BM_Modify_Reprice                  157 ns          153 ns      4480000 items_per_second=6.51636M/s
+BM_Market_OneFill                  141 ns          138 ns      4072727 items_per_second=7.2404M/s qty_actually_filled=407.273M
+BM_Market_SweepLevels              856 ns          921 ns       746667 items_per_second=1.08606M/s
+BM_Replay_MixedFlow/1000000        281 ms          276 ms            3 items_per_second=3.62264M/s trades_per_run=135.194k
+BM_TopOfBook                      3.94 ns         3.77 ns    165925926 items_per_second=265.481M/s
+BM_Depth10                         188 ns          188 ns      3733333 items_per_second=5.30963M/s

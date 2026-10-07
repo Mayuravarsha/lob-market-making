@@ -1,0 +1,7 @@
+build/
+__pycache__/
+*.so
+*.pyd
+*.pyc
+data/*.csv
+!data/.gitkeep
